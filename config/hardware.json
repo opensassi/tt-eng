@@ -1,0 +1,37 @@
+{
+  "chip": "blackhole",
+  "tt_metal_commit": "6d99c26a0c58950b2dc6bf4d2017892e37087d93",
+  "ttsim_version": "1.7.3",
+  "tt_isa_commit": "29e53cf90f4234d0ae8d8b9886c8cc4f37c801f2",
+  "version_urls": {
+    "tt_metal": "https://github.com/tenstorrent/tt-metal/commit/6d99c26a0c58950b2dc6bf4d2017892e37087d93",
+    "ttsim": "https://github.com/tenstorrent/ttsim/releases/tag/v1.7.3",
+    "tt_isa_documentation": "https://github.com/tenstorrent/tt-isa-documentation/commit/29e53cf90f4234d0ae8d8b9886c8cc4f37c801f2"
+  },
+  "simulator": "external/ttsim/libttsim_bh.so",
+  "soc_descriptor": "external/tt-metal/tt_metal/soc_descriptors/blackhole_140_arch.yaml",
+  "env": {
+    "TT_METAL_HOME": "${PROJECT_ROOT}/external/tt-metal",
+    "TT_METAL_SIMULATOR": "${PROJECT_ROOT}/external/ttsim/libttsim_bh.so",
+    "TT_METAL_SLOW_DISPATCH_MODE": "1",
+    "TT_METAL_DISABLE_SFPLOADMACRO": "1"
+  },
+  "build": {
+    "compiler": "g++",
+    "cxx_standard": "c++20",
+    "flags": ["-O2", "-g", "-fno-omit-frame-pointer"]
+  },
+  "tt_npe": {
+    "enabled": true,
+    "min_version": "0.9.0",
+    "sanity_sample_trace": "test/data/tt-npe-sample.csv"
+  },
+  "perf_events": [
+    "cycles",
+    "instructions",
+    "cache-misses",
+    "branch-misses",
+    "L1-dcache-load-misses",
+    "LLC-load-misses"
+  ]
+}

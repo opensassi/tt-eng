@@ -1,0 +1,18 @@
+- kernel:
+    watcher_kernel_id: 1
+    name: read_tiles
+    path: /home/pc/.cache/tt-metal-cache/16246393022168970451/kernels/read_tiles/2736556103569944698/
+    source: tt_metal/programming_examples/eltwise_binary/kernels/dataflow/read_tiles.cpp
+    program_id: 0
+- kernel:
+    watcher_kernel_id: 2
+    name: write_tile
+    path: /home/pc/.cache/tt-metal-cache/16246393022168970451/kernels/write_tile/14884369770568670810/
+    source: tt_metal/programming_examples/eltwise_binary/kernels/dataflow/write_tile.cpp
+    program_id: 0
+- kernel:
+    watcher_kernel_id: 3
+    name: tiles_add
+    path: /home/pc/.cache/tt-metal-cache/16246393022168970451/kernels/tiles_add/7747493934331565899/
+    source: tt_metal/programming_examples/eltwise_binary/kernels/compute/tiles_add.cpp
+    program_id: 0

@@ -1,0 +1,58 @@
+{
+  "status": "MINOR_ISSUES",
+  "issues": [
+    {
+      "category": "6. IEEE754 & Edge Cases",
+      "severity": "medium",
+      "finding": "Missing Negative Zero Semantics section. The MAD pipeline's multiply-by-1 (VA=LReg[10]=1.0) is exact and preserves standalone-ADD behavior, but when NEGATE_VA is set, -1.0×(-0.0) converts negative zero to positive zero. This edge case is documented in vmul.md but absent from vadd.md.",
+      "source_truth": "SFPMAD.md §IEEE754: 'If multiplying by one or adding zero, then the partially fused operation is equivalent to a standalone add or standalone multiply (handling of denormals notwithstanding).' No dedicated negative-zero note in SFPADD source, but the SFPMAD inheritance implies the same behavior.",
+      "fix": "Add a 'Negative Zero Semantics' section: 'The embedded 1.0×VA is exact — SFPADD preserves negative zero for the addition result. However, when MOD1_NEGATE_VA flips 1.0 to -1.0, the multiply converts negative-zero VB to positive zero, and the subsequent addition may see altered sign.'"
+    },
+    {
+      "category": "10. Blackhole vs Wormhole Differences",
+      "severity": "medium",
+      "finding": "No 'Blackhole Upgrade' section documenting that Mod1 bits 0-1 (NEGATE_VA, NEGATE_VC) and auto-stall are BH-only. On Wormhole, bits 0-1 are reserved (NonContractualBehavior) and manual SFPNOP is required for RAW hazards. vmac.md has this section; vadd.md does not.",
+      "source_truth": "Wormhole SFPADD.md scheduling: 'If SFPADD is used, software must ensure that on the next cycle... software must ensure a gap of at least one cycle... An SFPNOP instruction can be inserted.' BH SFPMAD.md: 'Compared to Wormhole, some of the major upgrades... automatic instruction scheduling.' BH SFPMAD.md §Blackhole Upgrade: 'SFPMAD_MOD1_NEGATE_VA and SFPMAD_MOD1_NEGATE_VC are new in Blackhole. On Wormhole, Mod1 bits 0-1 are reserved (NonContractualBehavior).'",
+      "fix": "Add a 'Blackhole Upgrade' section: 'MOD1_NEGATE_VA and MOD1_NEGATE_VC are new in Blackhole. On Wormhole, Mod1 bits 0-1 are reserved (NonContractualBehavior). Automatic instruction stalling is new in Blackhole — on Wormhole, manual SFPNOP is required after SFPADD to prevent RAW hazards.'"
+    },
+    {
+      "category": "6. IEEE754 & Edge Cases",
+      "severity": "low",
+      "finding": "'Partially fused (not fully IEEE754 FMA)' is misleading for a plain ADD instruction. SFPADD is not an FMA — the multiply-by-1 produces a bit-identical standalone FP32 add. The partially-fused pipeline property is inherited from SFPMAD but is practically irrelevant for SFPADD (no precision loss vs. IEEE754 add).",
+      "source_truth": "SFPMAD.md: 'If multiplying by one ... then the partially fused operation is equivalent to a standalone add or standalone multiply (handling of denormals notwithstanding).'",
+      "fix": "Change to: 'Partially fused pipeline (inherited from SFPMAD) — multiply-by-1 case is equivalent to standalone FP32 add. Denormals flushed to zero.'"
+    },
+    {
+      "category": "4. Scheduling Restrictions",
+      "severity": "low",
+      "finding": "'16-byte alignment required for LReg operands' is not supported by any source document. LRegs are a register file accessed per-lane, not memory. This statement may be incorrect or a copy-paste error from a memory instruction.",
+      "source_truth": "No source documents (SFPADD.md, SFPMAD.md, VectorUnit.md, LReg.md) mention alignment requirements for LReg operands.",
+      "fix": "Remove the '16-byte alignment required for LReg operands' note, or clarify it if there is a specific hardware restriction with a source citation."
+    },
+    {
+      "category": "11. Completeness for Code Generation",
+      "severity": "low",
+      "finding": "Missing cross-references to SFPMAD.md and LReg.md (both referenced in the source). No Encoding diagram section. No Performance section with TFLOP/s.",
+      "source_truth": "BH SFPADD.md links to SFPMAD.md and LReg.md. BH SFPMAD.md §Performance: 'Each SFPMAD instruction can perform 32 FP32 multiplications and 32 FP32 additions... 0.0864 TFLOP/s (per Vector Unit).'",
+      "fix": "Add cross-reference links: 'See [SFPMAD](sfpmad.md) for the full functional model, IEEE754 conformance details, and scheduling rules.' and 'See [LReg](LReg.md) for register definitions (LReg[10]=1.0).' Optionally add a Performance section with TFLOP/s."
+    }
+  ],
+  "missing_sections": [
+    "Encoding (bit diagram)",
+    "Functional model (C code, deferred to SFPMAD)",
+    "Negative Zero Semantics",
+    "Blackhole Upgrade",
+    "Performance (TFLOP/s)"
+  ],
+  "suggested_example": "SFPADD 10, 1, 2, 0, 0   ; LReg[0] = LReg[1] + LReg[2]  (correct syntax, keep as-is)",
+  "suggested_syntax": "SFPADD VA, VB, VC, VD, Mod1  (where VA must be 10; use SFPMAD for other VA values)",
+  "suggested_latency": "2 cycles (pipelined), IPC=1, 0.0864 TFLOP/s per Vector Unit at 1.35 GHz",
+  "suggested_notes": "Identical to SFPMAD but preferred opcode when VA=10 (LReg[10]=1.0). Do not use unless VA=10. Negative zero: NEGATE_VA modifier converts negative-zero VB to positive zero via -1.0×(-0.0). On Wormhole, bits 0-1 of Mod1 are reserved (NonContractualBehavior) and auto-stall is absent (manual SFPNOP required).",
+  "see_also": [
+    "SFPMAD.md (full functional model, IEEE754, scheduling)",
+    "LReg.md (LReg[10]=1.0 definition)",
+    "vmac.md (SFPMAD as multiply-accumulate)",
+    "vmul.md (SFPMUL, sibling instruction with negative-zero documentation)"
+  ],
+  "confidence": "high"
+}

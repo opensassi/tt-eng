@@ -1,0 +1,88 @@
+{
+  "format_version": "1.0",
+  "stages": [
+    {
+      "id": "stage0",
+      "name": "Environment Bootstrap",
+      "script": "src/stages/stage0-run.sh",
+      "deps": [],
+      "timeout_seconds": 3600,
+      "success_metric": "env-check.json reports all tools ready",
+      "thresholds": {
+        "min_tools_ready": 1,
+        "sanity_required": true
+      }
+    },
+    {
+      "id": "stage1",
+      "name": "Copy Kernel",
+      "script": "src/stages/stage1-run.sh",
+      "deps": ["stage0"],
+      "prompt": "prompts/stage1-copy-kernel.md",
+      "reference_kernel": "test/reference-kernels/dram-loopback.cpp",
+      "kernel_input_path": "src/generated/stage1/kernel.cpp",
+      "timeout_seconds": 300,
+      "success_metric": "Kernel compiles and output B matches input A exactly",
+      "thresholds": {
+        "max_compile_attempts": 5
+      }
+    },
+    {
+      "id": "stage2",
+      "name": "Elementwise Addition",
+      "script": "src/stages/stage2-run.sh",
+      "deps": ["stage1"],
+      "prompt": "prompts/stage2-eltwise-add.md",
+      "reference_kernel": "test/reference-kernels/eltwise-add.cpp",
+      "kernel_input_path": "src/generated/stage2/kernel.cpp",
+      "timeout_seconds": 300,
+      "success_metric": "Kernel compiles, correct, and tt-npe CSV is parseable",
+      "thresholds": {
+        "max_compile_attempts": 5,
+        "tests_must_pass": 3
+      }
+    },
+    {
+      "id": "stage3",
+      "name": "Performance Optimization",
+      "script": "src/stages/stage3-run.sh",
+      "deps": ["stage2"],
+      "prompt": "prompts/stage3-optimize.md",
+      "kernel_input_path": "src/generated/stage3/kernel.cpp",
+      "timeout_seconds": 600,
+      "success_metric": "Measurable NOC or BW improvement confirmed by tt-npe",
+      "thresholds": {
+        "min_improvement_pct": 10.0,
+        "metric_primary": "noc_util_pct",
+        "metric_secondary": "dram_bw_util_pct",
+        "max_attempts": 10
+      }
+    },
+    {
+      "id": "stage4",
+      "name": "Automated Iteration",
+      "script": "src/stages/stage4-loop.sh",
+      "deps": ["stage1", "stage2", "stage3"],
+      "timeout_seconds": 3600,
+      "success_metric": "3+ successful iterations without intervention",
+      "max_iterations": 20,
+      "target_metrics": {
+        "noc_util_pct": 0.30,
+        "dram_bw_util_pct": 0.45
+      },
+      "convergence_window": 3,
+      "thresholds": {
+        "min_successful_iterations": 3,
+        "max_total_iterations": 20
+      }
+    }
+  ],
+  "defaults": {
+    "generated_dir": "src/generated",
+    "results_dir": "results",
+    "experiments_dir": "results/experiments",
+    "timeout_seconds": 300,
+    "kernel_input_path": "src/generated/<stage>/kernel.cpp"
+  },
+  "tt_generated_kernel_path_var": "TT_GENERATED_KERNEL_PATH"
+}

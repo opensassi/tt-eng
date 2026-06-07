@@ -1,0 +1,12 @@
+- mesh_workload_created:
+    mesh_workload_id: 0
+    timestamp_ns: 1780855172710149442
+- mesh_workload_add_program:
+    mesh_workload_id: 0
+    program_id: 0
+    timestamp_ns: 1780855172710991642
+    coordinates:
+      - [0, 0]
+- mesh_workload_destroyed:
+    mesh_workload_id: 0
+    timestamp_ns: 1780855174237749387

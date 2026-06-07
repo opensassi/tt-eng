@@ -1,0 +1,26 @@
+# Results (experiment outputs)
+/results/
+
+# External dependencies (cloned repos)
+/external/tt-metal/
+/external/ttsim/
+
+# Generated kernels
+/src/generated/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+*.o
+*.so
+*.out
+build/
+
+# Audit logs
+audit_logs/

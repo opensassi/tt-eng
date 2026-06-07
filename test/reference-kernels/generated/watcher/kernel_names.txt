@@ -1,0 +1,4 @@
+0: blank
+1: tt_metal/programming_examples/eltwise_binary/kernels/dataflow/read_tiles.cpp
+2: tt_metal/programming_examples/eltwise_binary/kernels/dataflow/write_tile.cpp
+3: tt_metal/programming_examples/eltwise_binary/kernels/compute/tiles_add.cpp

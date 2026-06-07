@@ -1,0 +1,43 @@
+- program_created:
+    id: 0
+    timestamp_ns: 1780855172710122384
+- program_created:
+    id: 1
+    timestamp_ns: 1780855172711004821
+- program_destroyed:
+    id: 1
+    timestamp_ns: 1780855172711013296
+- program_compile_started:
+    id: 0
+    timestamp_ns: 1780855172711034333
+- program_kernel_compile_finished:
+    id: 0
+    timestamp_ns: 1780855172715102876
+    duration_ns: 4068543
+    watcher_kernel_id: 1
+    name: read_tiles
+    path: /home/pc/.cache/tt-metal-cache/17666801537744800765/kernels/read_tiles/16500040281070546242/
+    source: tt_metal/programming_examples/eltwise_binary/kernels/dataflow/read_tiles.cpp
+- program_kernel_compile_finished:
+    id: 0
+    timestamp_ns: 1780855172715583147
+    duration_ns: 4548814
+    watcher_kernel_id: 2
+    name: write_tile
+    path: /home/pc/.cache/tt-metal-cache/17666801537744800765/kernels/write_tile/6213069641787395446/
+    source: tt_metal/programming_examples/eltwise_binary/kernels/dataflow/write_tile.cpp
+- program_kernel_compile_finished:
+    id: 0
+    timestamp_ns: 1780855172721705032
+    duration_ns: 10670699
+    watcher_kernel_id: 3
+    name: tiles_add
+    path: /home/pc/.cache/tt-metal-cache/17666801537744800765/kernels/tiles_add/11691888800554373468/
+    source: tt_metal/programming_examples/eltwise_binary/kernels/compute/tiles_add.cpp
+- program_compile_finished:
+    id: 0
+    timestamp_ns: 1780855172721745246
+    duration_ns: 10710913
+- program_destroyed:
+    id: 0
+    timestamp_ns: 1780855174237780522

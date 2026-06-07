@@ -1,0 +1,4 @@
+0: blank
+1: /home/pc/.cache/tt-metal-cache/16246393022168970451/kernels/read_tiles/2736556103569944698//brisc/brisc.elf
+2: /home/pc/.cache/tt-metal-cache/16246393022168970451/kernels/write_tile/14884369770568670810//ncrisc/ncrisc.elf
+3: /home/pc/.cache/tt-metal-cache/16246393022168970451/kernels/tiles_add/7747493934331565899//trisc0/trisc0.elf:/home/pc/.cache/tt-metal-cache/16246393022168970451/kernels/tiles_add/7747493934331565899//trisc1/trisc1.elf:/home/pc/.cache/tt-metal-cache/16246393022168970451/kernels/tiles_add/7747493934331565899//trisc2/trisc2.elf
