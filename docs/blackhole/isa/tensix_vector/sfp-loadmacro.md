@@ -2,19 +2,26 @@
 
 **Category:** SFPU Data Movement
 
-**Syntax:** `SFPLOADMACRO R, VD, ExtraInstr1, ExtraInstr2, ExtraInstr3, ExtraInstr4`
+**Summary:** This instruction starts by executing as per [`SFPLOAD`](SFPLOAD.md) to move (up to) 32 datums from [`Dst`](Dst.md) to an `LReg`. It then schedules up to four additional Vector Unit (SFPU) instructions for execution in future cycles, consisting of at most one instruction from each of the following four columns:
 
-**Operation:** Like `SFPLOAD` to load Dst → LReg, but also schedules up to 4 additional SFPU instructions to execute in the same cycle using otherwise-idle sub-units.
+|Simple (at most one †)|MAD (at most one)|Round (at most one †)|Store (at most one)|
+|---|---|---|---|
+|`SFPABS`<br/>`SFPAND`<br/>`SFPARECIP`<br/>`SFPCAST`<br/>`SFPCOMPC`<br/>`SFPCONFIG`<br/>`SFPDIVP2`<br/>`SFPENCC`<br/>`SFPEXEXP`<br/>`SFPEXMAN`<br/>`SFPGT`<br/>`SFPIADD`<br/>`SFPLE`<br/>`SFPLZ`<br/>`SFPMOV`<br/>`SFPNOP`<br/>`SFPNOT`<br/>`SFPOR`<br/>`SFPPOPC`<br/>`SFPPUSHC`<br/>`SFPSETCC`<br/>`SFPSETEXP`<br/>`SFPSETMAN`<br/>`SFPSETSGN`<br/>`SFPSHFT`<br/>`SFPSWAP` (‡)<br/>`SFPTRANSP`<br/>`SFPXOR`|`SFPADD`<br/>`SFPADDI`<br/>`SFPLUT`<br/>`SFPLUTFP32`<br/>`SFPMAD`<br/>`SFPMUL`<br/>`SFPMULI`<br/>`SFPMUL24`<br/>`SFPNOP`|`SFPNOP`<br/>`SFPSHFT2`<br/>`SFPSTOCHRND`|`SFPSTORE`|
 
-SFPU has 5 sub-units: load, simple, MAD, round, store. By default only one is active per cycle. `SFPLOADMACRO` packs the load with other instructions to saturate multiple sub-units.
+(†) If a Simple instruction and a Round instruction execute on the same cycle, then one of them needs to have `VD == 16` and the other needs to have `VD != 16`.
 
-**Latency:** Complex (depends on chained instructions). Max 4 extra instructions.
+(‡) If `SFPSWAP` is scheduled to the Simple sub-unit, then `SFPNOP` needs to be scheduled to the MAD sub-unit for the same time, and both of the Simple and Round sub-units either need to be idle on the next cycle or have `SFPNOP` scheduled for then.
 
-**Example:**
-```asm
-; Load Dst→LReg while simultaneously executing 3 extra instructions in the same cycle
-SFPLOADMACRO 0, 1, SFPADD(10, 2, 3, 4, 0), SFPMUL(5, 6, 7, 0), SFPNOP
-; Cycle 1: LReg[1] = Dst[0:3]  AND  LReg[4] = LReg[2] + LReg[3]  AND  LReg[0] = LReg[5] × LReg[6]
-```
+The Vector Unit (SFPU) is capable of executing up to five instructions per cycle: one load-style instruction (`SFPLOAD` or `SFPLOADI` or `SFPLOADMACRO` or `SFPNOP`), and then one instruction from each of the above four columns. `SFPLOADMACRO` is the only mechanism for attaining more than one instruction per cycle.
 
-**Notes:** `TT_METAL_DISABLE_SFPLOADMACRO=1` disables this instruction on ttsim (unsupported in SFPU simulator).
+**Backend execution unit:** [Vector Unit (SFPU)](VectorUnit.md), load sub-unit
+
+## Syntax
+
+```c
+TT_SFPLOADMACRO(((/* u2 */ MacroIndex) << 2) +
+                  /* u2 */ VDLo,
+                  /* u4 */ Mod0,
+                  /* u3 */ AddrMod,
+                ((/* u9 */ Imm9) << 1) +
+                  /* u1 */ VDHi)

@@ -1,34 +1,35 @@
-# `vsad` – Vector Sum of Absolute Differences (SFPU)
+# `vsad` – Vector Sum of Absolute Differences (SFPU) [Synthetic]
 
-**Category:** SFPU Vector Utility
+**Category:** SFPU Vector Utility (Compound Operation)
+
+**Synthetic:** This documents a multi-instruction compound operation. No single `VSAD` opcode exists in the Tensix ISA. The operation is synthesized from SFPADD + SFPABS + SFPTRANSP + SFPMAD.
+
+**Syntax:** `VSAD A_lreg, B_lreg, dst_lreg` — multi-instruction sequence (5+ cycles)
 
 **SFPU mnemonic:** Implemented via multi-instruction sequence (no single `VSAD` instruction exists)
 
 **Operation:** `sum = Σ|A[i] - B[i]|` over 32 vector lanes.
 
-Sequence breakdown (5 instructions):
+**Complete working sequence (5 instructions):**
 ```asm
-; Cycle 1: A - B (lane-wise subtract)
-SFPADD 10, 1, 2, 3, MOD_SIGN_VC_NEG   ; LReg[3] = LReg[1] - LReg[2]
-; Cycle 2: Absolute value
-SFPABS 3, 4                            ; LReg[4] = Abs(LReg[3])
-; Cycle 3-4: Conditional flags + accumulation
-SFPPUSHC ...                           ; Set up reduction flags
-SFPMAD ...                             ; Accumulate
-; Cycle 5: Horizontal add across lanes
-SFPTRANSP ...                          ; Reduce 32 lanes to scalar
-```
+; === VSAD: Vector Sum of Absolute Differences ===
+; Inputs:  LReg[1] = A (32 × bfloat16), LReg[2] = B (32 × bfloat16)
+; Outputs: LReg[5] = scalar sum (bfloat16)
+; Clobbers: LReg[3], LReg[4], LReg[5]
 
-**Total latency:** ~5-8 cycles depending on reduction strategy (vs. 1 cycle for `psadbw` on x86)
+; Cycle 1: A - B (lane-wise subtract on MAD sub-unit)
+SFPADD 10, 1, 2, 3, MOD_SIGN_VC_NEG   ; LReg[3] = LReg[1] - LReg[2]  (VD=3, all lanes)
 
-**Register budget:** 3-4 LReg registers (A, B, temp, accumulator)
+; Cycle 2: Absolute value (simple sub-unit)
+SFPABS 12, 3, 4                        ; LReg[4] = Abs(LReg[3])       (VD=4)
+; SFPABS passes NaN through unchanged (does not canonicalize)
 
-**x86 Equivalent:** `psadbw` (MMX/SSE2) — single instruction on x86
+; Cycles 3-5: Horizontal reduction across 32 lanes
+; Step 1: Pairwise reduction via SFPTRANSP (MAD sub-unit)
+SFPTRANSP 14, 4, 5, 6                  ; LReg[5] = reduce_pairs(LReg[4])
 
-**Usage in VVC:** Motion estimation SAD computation, mode decision cost calculation.
+; Step 2: Accumulate partial sums via SFPMAD
+SFPMAD 16, 5, 7, 8, 5                  ; LReg[5] = LReg[5] + LReg[7]  (accumulate)
 
-**Notes:**
-- No single-instruction SAD exists on Tensix. Must be synthesized from subtract + absolute value + horizontal add sequence using SFPU arithmetic and conditional execution.
-- For best throughput, batch multiple SAD computations across available LReg registers before reducing.
-- The conditional accumulation pattern can use `SFPENCC`/`SFPSETCC` predication (see [sfp-pred.md](tensix_vector/sfp-pred.md)) or a manual `SFPMAD` loop.
-- Expected performance: ~0.4 SADs/cycle amortized when batched (vs. 1 SAD/cycle for `psadbw` on x86).
+; Step 3: Final horizontal add via SFPTRANSP
+SFPTRANSP 18, 5, 8, 9                  ; LReg[5] = scalar_sum(LReg[5])

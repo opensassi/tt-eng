@@ -1,14 +1,14 @@
-# `dma_read` – TDMA Bulk Read
+# `dma_read` – TDMA Bulk Data Move (Register Programming Sequence)
 
 **Category:** Data Movement (TDMA-RISC)
 
-**Syntax:** (configured via TDMA-RISC registers at `0xFFB1_1000-1FFF`)
+**Category Note:** This is a register programming *sequence* dispatched via the TDMA-RISC command processor, not a single instruction mnemonic. The TDMA-RISC coprocessor offloads the Baby RISC-V data-movement core.
 
-**Operation:** Initiate a bulk DMA read from DRAM or remote L1 into local L1. Handled by the TDMA-RISC coprocessor, offloading the Baby RISC-V core.
+**Stub Status:** This file targets Blackhole but is derived from WormholeB0 documentation (`TDMA-RISC.md`, `Mover.md`). No BlackholeA0-specific register maps were available at time of writing. Behavior is presumed compatible with WormholeB0 until confirmed otherwise.
 
-**x86 Equivalent:** `memcpy` / DMA engine
+---
 
-**Notes:**
-- Offloads data movement from the Baby RISC-V data-movement core
-- Configured via MMIO registers; completion signaled via interrupt or polling
-- Supports strided and rectangular data layouts
+## Syntax (Register Programming Sequence)
+
+A DMA data move is initiated by writing five MMIO registers in sequence, then writing the command opcode:
+

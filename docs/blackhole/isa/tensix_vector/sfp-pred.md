@@ -4,64 +4,74 @@
 
 Each lane has a stack of flag entries `{ LaneFlags, UseLaneFlagsForLaneEnable }`. When `UseLaneFlags = true`, lanes with `LaneFlags = false` are disabled. Used to implement SIMT `if/else` control flow.
 
+**Source file(s):**
+- `BlackholeA0/TensixTile/TensixCoprocessor/SFPENCC.md`
+- `BlackholeA0/TensixTile/TensixCoprocessor/SFPPUSHC.md`
+- `BlackholeA0/TensixTile/TensixCoprocessor/SFPCOMPC.md`
+- `BlackholeA0/TensixTile/TensixCoprocessor/SFPPOPC.md`
+
+**See also:** `LReg.md`, `VectorUnit.md`, `SFPSETCC.md`, `SFPCONFIG.md`
+
+---
+
 ## `SFPENCC` – Enable/Disable Conditional Execution
 
-**Syntax:** `SFPENCC Mode`
+**Syntax C-macro:** `TT_SFPENCC(Imm2, 0, VD, Mod1)`
 
-**Operation:** Set `UseLaneFlagsForLaneEnable` per lane. Once set to `true`, lane flags control which lanes execute subsequent instructions.
+**Operands:**
+- `VD` (u4, 0–15) — destination flag register
+- `Imm2` (u2, 0–3) — immediate mode
+- `Mod1` (u4, 0–15) — modifier flags (OR-able)
+
+**Constants:**
+- `SFPENCC_IMM2_E` = 1 — enable predication
+- `SFPENCC_IMM2_R` = 2 — reset `LaneFlags` from operand
+- `SFPENCC_MOD1_EC` = 1 — enable conditional
+- `SFPENCC_MOD1_EI` = 2 — enable inverted
+- `SFPENCC_MOD1_RI` = 8 — reset `LaneFlags` from `Imm2_R`
+
+**Operation:**
+- Sets `UseLaneFlagsForLaneEnable` per lane based on `Imm2` and `Mod1`.
+- When `Mod1` has `RI` bit set and `Imm2` has `R` bit set, `LaneFlags` are reset from the `Imm2_R` operand.
+- Once enabled, lane flags control which lanes execute subsequent instructions.
+
+**Register Constraints:**
+- All four instructions: if `VD < 12 || LaneConfig.DISABLE_BACKDOOR_LOAD`. Values 12–15 require `DISABLE_BACKDOOR_LOAD` to be set.
+
+---
 
 ## `SFPPUSHC` – Push / Mutate Flag Stack
 
-Push current flags onto stack, or compute new flags based on current state.
+**Syntax C-macro:** `TT_SFPPUSHC(0, 0, VD, Mod1)`
+
+**Operands:**
+- `VD` (u4, 0–15) — destination flag register
+- `Mod1` (u4, 0–15) — operation mode
+
+**Constants:** (Mod1 values)
+- 0: Plain push — push current flags onto stack
+- 1–12: BooleanOp function (see table below): A = stack top `LaneFlags`, B = current `LaneFlags`. Result replaces stack top.
+- 13: Invert and push — `LaneFlags = !LaneFlags`, then push
+- 14: Set true and push — `LaneFlags = {true, true}`, then push
+- 15: Set false and push — `LaneFlags = {true, false}`, then push
+
+**Architecture Note:** Mod1 != 0 is Blackhole-specific. Wormhole only supports Mod1 = 0 (plain push).
+
+**UndefinedBehavior():**
+- `SFPPUSHC` with Mod1 = 0 (plain push) on a full stack (8 entries)
+- `SFPPUSHC` with Mod1 != 0 on an empty stack
+
+**Register Constraints:**
+- If `VD < 12 || LaneConfig.DISABLE_BACKDOOR_LOAD`. Values 12–15 require `DISABLE_BACKDOOR_LOAD`.
+
+---
 
 ## `SFPCOMPC` – SIMT `else` Mapping
 
-Computes the inverse of current lane flags for `else` branch execution.
+**Syntax C-macro:** `TT_SFPCOMPC(0, 0, VD, 0)`
 
-## `SFPPOPC` – Pop Flag Stack
+**Operands:**
+- `VD` (u4, 0–15) — destination flag register
 
-Restore previous flag state.
-
-## Programming Model
-
-```
-SFPENCC ON                    ; Enable predication
-SFPSETCC ...                  ; Set flags: lanes where condition is true get LaneFlags=true
-  ... instructions for true branch ...
-SFPPUSHC ...                  ; Invert flags
-  ... instructions for false branch ...
-SFPPOPC                       ; Restore
-```
-
-**Latency:** 1 cycle each, IPC=1
-
-**Stack Depth Limit:**
-- Flag stack supports max 8 elements
-- `SFPPUSHC` with Mod1=0 (plain push) must not be used when stack is full
-- `SFPPUSHC` with Mod1 != 0 requires stack non-empty
-- `SFPPOPC` with Mod1=0 (plain pop) must not be used when stack is empty
-
-**BooleanOp Function Table (SFPPUSHC/SFPPOPC Mod1 values 1-12):**
-
-| Mod1 | BooleanOp(A, B) | Description |
-|------|----------------|-------------|
-| 1 | B | Pass B |
-| 2 | !B | Not B |
-| 3 | A && B | And |
-| 4 | A \|\| B | Or |
-| 5 | A && !B | And-not B |
-| 6 | A \|\| !B | Or-not B |
-| 7 | !A && B | Not-A-and B |
-| 8 | !A \|\| B | Not-A-or B |
-| 9 | !A && !B | Nor |
-| 10 | !A \|\| !B | Nand |
-| 11 | A != B | Xor |
-| 12 | A == B | Xnor |
-
-For `SFPPUSHC`: A = stack top LaneFlags, B = current LaneFlags. Result replaces stack top LaneFlags.
-For `SFPPOPC` (Mod1=1-12): A = current LaneFlags, B = stack top LaneFlags. Result replaces current LaneFlags.
-
-**Scheduling Notes:**
-- All predication instructions execute on the simple sub-unit (1 cycle, no stalling)
-- `SFPPOPC` complex modes (Mod1 != 0) have a hardware bug on Wormhole when stack is full; fixed in Blackhole
-- Single-cycle throughput, fully pipelined
+**Operation:**
+Computes the inverse of current lane flags for `else` branch execution:

@@ -21,6 +21,7 @@
 # Options:
 #   PARALLEL_JOBS=4    parallel inference calls (default 4)
 #   LOG_DIR=./logs     output directory (default PROJECT_ROOT/audit_logs)
+#   MODE=incremental   "incremental" skips files with existing valid results; "clean" starts fresh (default incremental)
 
 set -euo pipefail
 
@@ -30,6 +31,11 @@ SOURCE_DIR="$PROJECT_ROOT/external/tt-isa-documentation"
 RUBRIC_FILE="$PROJECT_ROOT/prompts/isa-audit-rubric.md"
 PARALLEL_JOBS="${PARALLEL_JOBS:-4}"
 LOG_DIR="${LOG_DIR:-$PROJECT_ROOT/audit_logs}"
+MODE="${MODE:-incremental}"
+
+if [[ "$MODE" == "clean" ]]; then
+    rm -rf "$LOG_DIR"
+fi
 mkdir -p "$LOG_DIR"
 
 OP=$(command -v opencode || echo "./opencode")
@@ -97,6 +103,16 @@ process_file() {
         echo "WARNING: No source file found for $rel_path (mnemonic: $instr_name)" >> "$LOG_DIR/missing_source.log"
     fi
 
+    # Use path-based base for unique filenames (synchronization/README, not README)
+    local safe_base=$(echo "$rel_path" | sed 's/\//_/g' | sed 's/\.md$//')
+    local result_file="$LOG_DIR/result_$safe_base.json"
+
+    # Skip if incremental mode and valid result already exists
+    if [[ "$MODE" == "incremental" && -s "$result_file" ]] && jq -e '.' "$result_file" >/dev/null 2>&1; then
+        echo "  Skipping $rel_path (already has valid result)"
+        return
+    fi
+
     # 2. Deterministic checks (fast grep, no LLM)
     local needs_checklist=false
     if ! grep -q '^**Syntax:**' "$isa_file"; then needs_checklist=true; fi
@@ -106,8 +122,8 @@ process_file() {
 
     # Always fork rubric session for the deep audit — even if section checks pass,
     # there may be semantic errors that only LLM evaluation can catch.
-    local prompt_file="$LOG_DIR/prompt_$base.txt"
-    local result_file="$LOG_DIR/result_$base.json"
+    local prompt_file="$LOG_DIR/prompt_$safe_base.txt"
+    local raw_file="$LOG_DIR/result_${safe_base}_raw.txt"
 
     # 3. Build per-file prompt (just the data — rubric is inherited from session)
     cat > "$prompt_file" <<-PROMPT
@@ -132,16 +148,49 @@ $(
     echo "All required sections present — evaluate for semantic accuracy."
   fi
 )
+
+You MUST output ONLY a JSON object matching the rubric format (status, issues, confidence, etc.). Do NOT include any text before or after the JSON.
 PROMPT
 
     # 4. Fork the rubric session with this per-file prompt
     echo "  Forking rubric session for $rel_path ..."
-    $OP run --session "$SESSION_ID" --fork "$(cat "$prompt_file")" > "$result_file" 2>&1
-    echo "  Result saved to $(basename "$result_file")"
+    $OP run --session "$SESSION_ID" --fork --title "audit $rel_path" "$(cat "$prompt_file")" > "$raw_file" 2>&1
+
+    # 5. Post-process: strip ANSI codes and extract JSON block
+    sed -i 's/\x1b\[[0-9;]*m//g' "$raw_file"
+    # Try fenced code block first (```json ... ```)
+    sed -n '/^```json$/,/^```$/p' "$raw_file" | sed '1d;$d' > "$result_file"
+    # If no fenced block, try bare JSON: find first '{' and extract balanced braces via python
+    if [[ ! -s "$result_file" ]] || ! jq -e '.' "$result_file" >/dev/null 2>&1; then
+        python3 -c "
+import sys, json
+with open('$raw_file') as f:
+    content = f.read()
+start = content.find('{')
+if start >= 0:
+    depth = 0
+    for i in range(start, len(content)):
+        if content[i] == '{': depth += 1
+        elif content[i] == '}': depth -= 1
+        if depth == 0:
+            obj = content[start:i+1]
+            try:
+                json.loads(obj)
+                print(obj)
+            except:
+                pass
+            break
+" > "$result_file" 2>/dev/null
+    fi
+    # If still no valid JSON, fall back to the cleaned raw file
+    if [[ ! -s "$result_file" ]] || ! jq -e '.' "$result_file" >/dev/null 2>&1; then
+        cp "$raw_file" "$result_file"
+    fi
+    echo "  Result saved to $(basename "$result_file") ($(wc -c < "$result_file") bytes)"
 }
 
 export -f process_file
-export DOCS_DIR SOURCE_DIR LOG_DIR OP SESSION_ID
+export DOCS_DIR SOURCE_DIR LOG_DIR OP SESSION_ID MODE
 
 # --- Main ---
 find "$DOCS_DIR/isa" -type f -name "*.md" > /tmp/isa_files_all.txt
